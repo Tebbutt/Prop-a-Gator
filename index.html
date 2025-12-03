@@ -1,17 +1,114 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>📰 Prop-a-Gator</title>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Prop-a-Gator</title>
+    <style>
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background: #f7f7f7;
+            color: #333;
+        }
+
+        header {
+            padding: 30px 20px;
+            text-align: center;
+            background: white;
+            border-bottom: 1px solid #ddd;
+        }
+
+        header h1 {
+            margin: 0;
+            font-size: 2rem;
+            color: #222;
+        }
+
+        .search-section {
+            max-width: 700px;
+            margin: 40px auto;
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            border: 1px solid #e5e5e5;
+        }
+
+        .search-section p {
+            font-size: 1.1rem;
+            margin-bottom: 20px;
+            color: #444;
+        }
+
+        .input-row {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        input[type="text"] {
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 1rem;
+        }
+
+        .grid {
+            max-width: 1200px;
+            margin: 40px auto;
+            display: grid;
+            gap: 20px;
+            grid-template-columns: repeat(2, 1fr);
+        }
+
+        .panel {
+            background: white;
+            border: 1px solid #e1e1e1;
+            border-radius: 8px;
+            padding: 20px;
+            min-height: 250px;
+        }
+
+        .panel h2 {
+            margin-top: 0;
+            font-size: 1.2rem;
+            color: #333;
+            border-left: 5px solid #BCD727;
+            padding-left: 10px;
+        }
+    </style>
 </head>
 <body>
 
+    <header>
+        <h1>Prop-a-Gator</h1>
+    </header>
 
-</br>
-</br>
-</br>
-<footer style="text-align:center; padding:1em 0; background:#B26840;">
-</footer>
+    <section class="search-section">
+        <p>Enter an address or tenant to begin</p>
+        <div class="input-row">
+            <input type="text" placeholder="Address" />
+            <input type="text" placeholder="Tenant" />
+        </div>
+    </section>
+
+    <section class="grid">
+        <div class="panel">
+            <h2>Recent Tenant News</h2>
+        </div>
+
+        <div class="panel">
+            <h2>AI Tenant Overview</h2>
+        </div>
+
+        <div class="panel">
+            <h2>Recent Local News</h2>
+        </div>
+
+        <div class="panel">
+            <h2>AI Local Overview</h2>
+        </div>
+    </section>
+
 </body>
 </html>
