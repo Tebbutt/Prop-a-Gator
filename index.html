@@ -1,114 +1,497 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Prop-a-Gator</title>
-    <style>
-        body {
-            margin: 0;
-            font-family: Arial, sans-serif;
-            background: #f7f7f7;
-            color: #333;
-        }
+<meta charset="utf-8" />
+<title>Prop-a-Gator — POC</title>
+<meta name="viewport" content="width=device-width,initial-scale=1" />
 
-        header {
-            padding: 30px 20px;
-            text-align: center;
-            background: white;
-            border-bottom: 1px solid #ddd;
-        }
+<!-- ========== CONFIG: Replace these keys near the top ========== -->
+<script>
+  // --- Replace these keys as needed (easy to find) ---
+  const NEWSDATA_API_KEY = "pub_9524b7d26e424c3f891108537cca44c9"; // <-- your NewsData.io key
+  const OPENAI_API_KEY = "sk-your-openai-key-here";                 // <-- optional (not used by default)
+</script>
 
-        header h1 {
-            margin: 0;
-            font-size: 2rem;
-            color: #222;
-        }
+<!-- Leaflet CSS -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
 
-        .search-section {
-            max-width: 700px;
-            margin: 40px auto;
-            background: white;
-            padding: 30px;
-            border-radius: 8px;
-            border: 1px solid #e5e5e5;
-        }
+<!-- Basic styling -->
+<style>
+  :root{
+    --accent:#BCD727;
+    --muted:#f0f0f0;
+    --card-bg:#ffffff;
+    --text:#222;
+    --radius:8px;
+  }
+  html,body { height:100%; margin:0; font-family:Inter, Arial, sans-serif; color:var(--text); background:#f7f7f7; }
 
-        .search-section p {
-            font-size: 1.1rem;
-            margin-bottom: 20px;
-            color: #444;
-        }
+  /* ========== Header (with Crocodile SVG Option 2) ========== */
+  header.header {
+    width: 100%;
+    padding: 18px 30px;
+    background: #fff;
+    border-bottom: 1px solid #e5e5e5;
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    position: sticky;
+    top: 0;
+    z-index: 2000;
+  }
+  .brand { display:flex; align-items:center; gap:18px; }
+  .logo svg { height:54px; width:54px; display:block; }
+  .brand .title { font-size:36px; font-weight:700; letter-spacing:-0.2px; color:#333; margin-bottom:2px; }
+  .brand .subtitle { font-size:16px; color:#666; margin-top:2px; }
+  .text-block { display:flex; flex-direction:column; line-height:1.1; }
 
-        .input-row {
-            display: flex;
-            flex-direction: column;
-            gap: 15px;
-        }
+  /* Page layout */
+  .page { padding:16px; height: calc(100% - 82px); box-sizing:border-box; }
+  .top-controls { background:var(--card-bg); padding:14px; border-radius:var(--radius); border:1px solid #e9e9e9; display:flex; gap:12px; align-items:center; margin-bottom:12px; }
+  .top-controls p { margin:0; color:#444; font-weight:600; }
+  .field { display:flex; flex-direction:column; flex:1; min-width:180px; position:relative; }
+  .field label { font-size:12px; font-weight:700; color:#444; margin-bottom:6px; }
+  .field input { padding:10px 12px; border-radius:8px; border:1px solid #ddd; background:#fff; font-size:14px; outline:none; }
+  .autocomplete-results { position:absolute; top:100%; left:0; right:0; z-index:80; background:#fff; border:1px solid #ddd; border-radius:6px; max-height:260px; overflow:auto; display:none; }
+  .autocomplete-item { padding:10px; cursor:pointer; }
+  .autocomplete-item:hover { background:rgba(188,215,39,0.12); }
 
-        input[type="text"] {
-            padding: 12px;
-            border: 1px solid #ddd;
-            border-radius: 6px;
-            font-size: 1rem;
-        }
+  /* Workspace splits */
+  .workspace { height: calc(100% - 84px); display:flex; gap:12px; }
+  .pane { height:100%; overflow:hidden; }
+  .left-pane { display:flex; flex-direction:column; gap:12px; }
+  .map-quad { background:var(--card-bg); border:1px solid #e9e9e9; border-radius:8px; padding:12px; box-sizing:border-box; height:100%; display:flex; flex-direction:column; }
+  #map { flex:1; border-radius:6px; }
 
-        .grid {
-            max-width: 1200px;
-            margin: 40px auto;
-            display: grid;
-            gap: 20px;
-            grid-template-columns: repeat(2, 1fr);
-        }
+  .quad { background:var(--card-bg); border:1px solid #e9e9e9; border-radius:8px; padding:14px; box-sizing:border-box; overflow:auto; }
+  .quad h2 { margin:0 0 8px 0; font-size:16px; padding-left:8px; border-left:4px solid var(--accent); display:inline-block; }
+  .progress-container{ width:100%; background:#f0f0f0; height:14px; border-radius:999px; margin-top:10px; }
+  .progress-bar { height:14px; background:var(--accent); width:0%; border-radius:999px; color:#fff; font-size:11px; text-align:center; line-height:14px; }
 
-        .panel {
-            background: white;
-            border: 1px solid #e1e1e1;
-            border-radius: 8px;
-            padding: 20px;
-            min-height: 250px;
-        }
+  table { width:100%; border-collapse:collapse; font-size:13px; }
+  th,td { padding:8px 6px; border-bottom:1px solid #eee; text-align:left; }
+  th { background:#fafafa; font-weight:700; font-size:12px; }
+  a { color:#186; text-decoration:none; }
+  a:hover { text-decoration:underline; }
 
-        .panel h2 {
-            margin-top: 0;
-            font-size: 1.2rem;
-            color: #333;
-            border-left: 5px solid #BCD727;
-            padding-left: 10px;
-        }
-    </style>
+  .sentiment{ font-size:12px; padding:4px 8px; border-radius:6px; color:#fff; font-weight:700; }
+  .pos{ background:#4CAF50 } .neg{ background:#E53935 } .neu{ background:#757575 }
+
+  .date-recent{ color:#2e7d32; font-weight:700; }
+  .date-medium{ color:#ff8f00; font-weight:700; }
+  .date-old{ color:#666; }
+
+  .ai-card{ background:#fff; border-radius:8px; padding:12px; box-shadow:0 2px 10px rgba(10,10,10,0.03); }
+  .ai-card ul{ margin:0; padding-left:18px; }
+  .highlight{ background:rgba(188,215,39,0.15); padding:2px 6px; border-radius:4px; font-weight:700; }
+
+  .legend{ margin-top:10px; font-size:13px; display:flex; gap:12px; align-items:center; flex-wrap:wrap; }
+  .legend .item{ display:flex; align-items:center; gap:8px; }
+  .legend .swatch{ width:20px; height:28px; background-size:contain; background-repeat:no-repeat; }
+
+  @media (max-width:900px){
+    .workspace{ flex-direction:column; }
+    .split-gutter{ display:none !important; }
+  }
+
+  .gutter { background: rgba(11,23,8,0.03); background-clip: padding-box; }
+  .gutter.gutter-vertical { cursor: col-resize; width:12px; }
+  .gutter.gutter-horizontal { cursor: row-resize; height:10px; }
+</style>
 </head>
 <body>
 
-    <header>
-        <h1>Prop-a-Gator</h1>
-    </header>
+<!-- ========== HEADER with Crocodile Option 2 ========== -->
+<header class="header" role="banner">
+  <div class="brand" role="img" aria-label="Prop-a-Gator logo">
+    <div class="logo" aria-hidden="true">
+      <!-- Refined Crocodile SVG (Option 2) -->
+      <svg width="60" height="60" viewBox="0 0 110 70" xmlns="http://www.w3.org/2000/svg" role="img" aria-hidden="true">
+        <path d="M10 35 C15 20, 40 10, 80 15 L100 10 L108 20 L108 30 C108 40, 100 50, 80 55 C40 60, 15 50, 10 35 Z"
+              fill="#BCD727" stroke="#8FA51D" stroke-width="3" stroke-linejoin="round"/>
+        <path d="M38 40 L41 47 M48 41 L51 48 M58 42 L61 49 M68 43 L71 50 M78 44 L81 51 M88 43 L90 49"
+              stroke="#ffffff" stroke-width="3" stroke-linecap="round"/>
+        <ellipse cx="52" cy="27" rx="6" ry="7" fill="#222" />
+        <circle cx="54" cy="26" r="2" fill="#fff" />
+      </svg>
+    </div>
 
-    <section class="search-section">
-        <p>Enter an address or tenant to begin</p>
-        <div class="input-row">
-            <input type="text" placeholder="Address" />
-            <input type="text" placeholder="Tenant" />
+    <div class="text-block">
+      <div class="title">Prop-a-Gator</div>
+      <div class="subtitle">Deep Market Intelligence for Commercial Real Estate</div>
+    </div>
+  </div>
+</header>
+
+<!-- ========== MAIN PAGE ========== -->
+<div class="page">
+
+  <!-- Top controls -->
+  <div class="top-controls" role="region" aria-label="Search controls">
+    <div style="flex:1; display:flex; gap:12px;">
+      <div class="field" style="flex:2;">
+        <label for="addressInputTop">Address</label>
+        <input id="addressInputTop" placeholder="Enter address (city, street, postcode)..." autocomplete="off" />
+        <div id="addressDropdown" class="autocomplete-results" role="listbox"></div>
+      </div>
+
+      <div class="field" style="flex:1;">
+        <label for="tenantInputTop">Tenant</label>
+        <input id="tenantInputTop" placeholder="Tenant name (e.g. Tesco, Starbucks)" />
+      </div>
+    </div>
+
+    <div style="min-width:200px; text-align:right;">
+      <p style="margin:0; font-size:13px; color:#666;">Enter an address or tenant to begin</p>
+    </div>
+  </div>
+
+  <!-- Workspace: left map and right content panes (Split.js controls sizes) -->
+  <div id="workspace" class="workspace">
+    <!-- Left pane (map) -->
+    <div id="leftPane" class="pane left-pane">
+      <div class="map-quad" role="region" aria-label="Property map">
+        <div style="display:flex; justify-content:space-between; align-items:center; gap:12px;">
+          <h2 style="margin:0;">Property Map</h2>
+          <div style="font-size:13px; color:#666;">Markers: <span id="markerCount">0</span></div>
         </div>
-    </section>
 
-    <section class="grid">
-        <div class="panel">
-            <h2>Recent Tenant News</h2>
+        <div id="map" aria-hidden="false"></div>
+
+        <div class="legend" aria-hidden="false">
+          <div class="item"><span class="swatch" style="background-image:url('https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-green.png');"></span> Address / Location</div>
+          <div class="item"><span class="swatch" style="background-image:url('https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-blue.png');"></span> Tenant Search</div>
+
+          <div style="margin-left:auto; display:flex; gap:12px; align-items:center;">
+            <label style="display:flex; align-items:center; gap:6px;"><input id="toggleAddressHeat" type="checkbox" /> Address heat</label>
+            <label style="display:flex; align-items:center; gap:6px;"><input id="toggleTenantHeat" type="checkbox" /> Tenant heat</label>
+            <button id="clearMarkers" style="padding:6px 10px; border-radius:8px; border:1px solid #ddd; background:#fff; cursor:pointer;">Clear</button>
+          </div>
         </div>
+      </div>
+    </div>
 
-        <div class="panel">
-            <h2>AI Tenant Overview</h2>
+    <!-- Right pane (content) -->
+    <div id="rightPane" class="pane">
+      <!-- Right is split vertically into top and bottom; each row contains two quads side-by-side -->
+      <div id="rightTop" class="pane" style="height:50%; display:flex; gap:12px;">
+        <div id="quad1" class="quad" style="flex:1;">
+          <h2>Recent Tenant News</h2>
+          <div id="tenantNewsList"><p class="loading">No results yet.</p></div>
         </div>
-
-        <div class="panel">
-            <h2>Recent Local News</h2>
+        <div id="quad2" class="quad" style="flex:1;">
+          <h2>AI Tenant Overview</h2>
+          <div id="tenantAI"><div style="color:#888;">No summary yet.</div></div>
+          <div class="progress-container"><div id="tenantProgress" class="progress-bar">0%</div></div>
         </div>
+      </div>
 
-        <div class="panel">
-            <h2>AI Local Overview</h2>
+      <div id="rightBottom" class="pane" style="height:50%; display:flex; gap:12px;">
+        <div id="quad3" class="quad" style="flex:1;">
+          <h2>Recent Local News</h2>
+          <div id="localNewsList"><p class="loading">No results yet.</p></div>
         </div>
-    </section>
+        <div id="quad4" class="quad" style="flex:1;">
+          <h2>AI Local Overview</h2>
+          <div id="localAI"><div style="color:#888;">No summary yet.</div></div>
+          <div class="progress-container"><div id="localProgress" class="progress-bar">0%</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
 
+<!-- External libs -->
+<script src="https://unpkg.com/split.js/dist/split.min.js"></script>
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet.heat/dist/leaflet-heat.js"></script>
+
+<!-- WebLLM import (in-browser model) -->
+<script type="module">
+// We will import WebLLM from esm.run — may take time to load model in-browser.
+import { CreateMLCEngine } from "https://esm.run/@mlc-ai/web-llm";
+
+// ---------- WebLLM setup ----------
+let engine = null;
+async function initWebLLM(progressElem=null){
+  if(engine) return;
+  if(progressElem){ progressElem.style.width="0%"; progressElem.textContent="0%"; }
+  try{
+    const modelId = "Llama-3.2-1B-Instruct-q4f32_1-MLC"; // small model
+    engine = await CreateMLCEngine(modelId, {
+      initProgressCallback: p => {
+        if(progressElem){
+          const pct = Math.floor(p*100);
+          progressElem.style.width = pct + "%";
+          progressElem.textContent = pct + "%";
+        }
+      }
+    });
+    if(progressElem){ progressElem.style.width="100%"; progressElem.textContent="Loaded"; }
+  }catch(e){
+    console.error("WebLLM init error:", e);
+    if(progressElem){ progressElem.style.width="100%"; progressElem.textContent="Failed"; }
+  }
+}
+
+function renderPrettyAI(outElem, txt){
+  const linked = txt.replace(/(https?:\/\/[^\s]+)/g, '<a href="$1" target="_blank" rel="noopener">$1</a>');
+  const highlighted = linked.replace(/\b(growth|decline|increase|profit|loss|expansion|risk|warning)\b/gi, '<span class="highlight">$1</span>');
+  const bullets = highlighted.split(/[\.\n]+/).map(s=>s.trim()).filter(Boolean).map(s=>`<li>${s}</li>`).join('');
+  outElem.innerHTML = `<div class="ai-card"><ul>${bullets}</ul></div>`;
+}
+
+window.generateAISummary = async function(prompt, outElem, progressElem=null){
+  try{
+    if(!engine) await initWebLLM(progressElem);
+    outElem.innerHTML = "<div style='color:#888;'>Generating AI summary…</div>";
+    const resp = await engine.chat.completions.create({
+      messages: [{role:"user", content: prompt}],
+      temperature: 0.7,
+      max_tokens: 250
+    });
+    const txt = resp.choices?.[0]?.message?.content || "AI summary unavailable.";
+    renderPrettyAI(outElem, txt);
+  }catch(e){
+    console.error("AI error", e);
+    outElem.innerHTML = "<div style='color:#888;'>AI summary unavailable.</div>";
+  }
+};
+</script>
+
+<!-- Main script (map, markers, heat, news, autocomplete, layout) -->
+<script>
+// ---------- Map & icons ----------
+const greenIcon = new L.Icon({
+  iconUrl: "https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-green.png",
+  shadowUrl: "https://unpkg.com/leaflet/dist/images/marker-shadow.png",
+  iconSize: [25,41], iconAnchor:[12,41]
+});
+const blueIcon = new L.Icon({
+  iconUrl: "https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-blue.png",
+  shadowUrl: "https://unpkg.com/leaflet/dist/images/marker-shadow.png",
+  iconSize: [25,41], iconAnchor:[12,41]
+});
+
+const map = L.map('map', { zoomControl:true }).setView([51.505, -0.09], 13);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom:19, attribution:'© OpenStreetMap' }).addTo(map);
+
+// markers and heat arrays
+let markers = [];
+let markerGroup = L.layerGroup().addTo(map);
+let addressHeatPoints = [];
+let tenantHeatPoints = [];
+
+let addressHeatLayer = L.heatLayer([], { radius: 25, blur: 18, gradient: {0.2:'lime', 0.5:'yellow', 1.0:'red'} });
+let tenantHeatLayer  = L.heatLayer([], { radius: 25, blur: 18, gradient: {0.2:'cyan', 0.5:'blue', 1.0:'purple'} });
+
+// add marker (type: "address" or "tenant")
+function addMarker(lat, lon, label, type){
+  const icon = (type === "tenant") ? blueIcon : greenIcon;
+  const m = L.marker([parseFloat(lat), parseFloat(lon)], { icon }).bindPopup(label);
+  markers.push(m);
+  markerGroup.addLayer(m);
+  const point = [parseFloat(lat), parseFloat(lon), 1];
+  if(type === "tenant") tenantHeatPoints.push(point); else addressHeatPoints.push(point);
+
+  if(document.getElementById("toggleAddressHeat").checked) addressHeatLayer.setLatLngs(addressHeatPoints);
+  if(document.getElementById("toggleTenantHeat").checked) tenantHeatLayer.setLatLngs(tenantHeatPoints);
+
+  syncMapBounds();
+  document.getElementById("markerCount").textContent = markers.length;
+}
+
+function syncMapBounds(){
+  if(markers.length === 0) return;
+  const group = new L.featureGroup(markers);
+  map.fitBounds(group.getBounds().pad(0.18));
+  setTimeout(()=>map.invalidateSize(), 220);
+}
+
+function clearAllMarkers(){
+  markers.forEach(m => markerGroup.removeLayer(m));
+  markers = [];
+  addressHeatPoints = [];
+  tenantHeatPoints = [];
+  addressHeatLayer.setLatLngs([]);
+  tenantHeatLayer.setLatLngs([]);
+  document.getElementById("markerCount").textContent = "0";
+}
+
+// heat toggles & clear
+document.getElementById("toggleAddressHeat").addEventListener("change", (e)=>{
+  if(e.target.checked) addressHeatLayer.addTo(map); else map.removeLayer(addressHeatLayer);
+});
+document.getElementById("toggleTenantHeat").addEventListener("change", (e)=>{
+  if(e.target.checked) tenantHeatLayer.addTo(map); else map.removeLayer(tenantHeatLayer);
+});
+document.getElementById("clearMarkers").addEventListener("click", ()=>{ clearAllMarkers(); });
+
+// ---------- Split.js for resizable layout ----------
+const rootSplit = Split(['#leftPane','#rightPane'], {
+  sizes: [35,65],
+  minSize: [220,350],
+  gutterSize: 12,
+  elementStyle: (dimension, size, gutterSize) => ({ 'flex-basis': `calc(${size}% - ${gutterSize}px)` }),
+  gutterStyle: (dimension, gutterSize) => ({ 'flex-basis': `${gutterSize}px` })
+});
+
+const rightV = Split(['#rightTop', '#rightBottom'], {
+  direction: 'vertical',
+  sizes: [50,50],
+  minSize: [120,120],
+  gutterSize: 10,
+  elementStyle: (d,s,g) => ({ height: `calc(${s}% - ${g}px)` })
+});
+
+const topRow = Split(['#quad1','#quad2'], { sizes:[50,50], minSize:120, gutterSize:10 });
+const bottomRow = Split(['#quad3','#quad4'], { sizes:[50,50], minSize:120, gutterSize:10 });
+
+// invalidate map after dragging
+document.addEventListener('mouseup', ()=> setTimeout(()=>map.invalidateSize(),120));
+window.addEventListener('resize', ()=> map.invalidateSize());
+
+// ---------- Address autocomplete (Nominatim) ----------
+const addressInputTop = document.getElementById("addressInputTop");
+const addressDropdown = document.getElementById("addressDropdown");
+let addressTimer = null;
+
+addressInputTop.addEventListener('input', ()=>{
+  clearTimeout(addressTimer);
+  const q = addressInputTop.value.trim();
+  if(!q){ addressDropdown.style.display='none'; return; }
+  addressTimer = setTimeout(async ()=>{
+    try{
+      const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&addressdetails=1&limit=6`;
+      const res = await fetch(url);
+      const data = await res.json();
+      addressDropdown.innerHTML = '';
+      data.forEach(item=>{
+        const div = document.createElement('div');
+        div.className = 'autocomplete-item';
+        div.textContent = item.display_name;
+        div.addEventListener('click', ()=>{
+          addressInputTop.value = item.display_name;
+          addressDropdown.style.display='none';
+          const city = item.address.city || item.address.town || item.address.village || '';
+          const county = item.address.county || '';
+          const country = item.address.country || '';
+          fetchLocalNews(city, county, country);
+          generateAISummary(`Provide a concise commercial real-estate overview of City: ${city} County: ${county} Country: ${country}. Max 150 words.`, document.getElementById('localAI'), document.getElementById('localProgress'));
+          addMarker(item.lat, item.lon, item.display_name, "address");
+        });
+        addressDropdown.appendChild(div);
+      });
+      addressDropdown.style.display = data.length ? 'block' : 'none';
+    }catch(err){
+      console.error('Nominatim error', err);
+    }
+  }, 300);
+});
+
+// ---------- Tenant input wiring ----------
+const tenantInputTop = document.getElementById('tenantInputTop');
+let tenantTimer = null;
+tenantInputTop.addEventListener('input', ()=>{
+  clearTimeout(tenantTimer);
+  tenantTimer = setTimeout(()=> {
+    const tenant = tenantInputTop.value.trim();
+    if(!tenant) return;
+    handleTenantSearch(tenant);
+  }, 500);
+});
+
+// ---------- Sentiment, time-ago, rendering ----------
+const positiveWords = ["growth","record","profit","increase","expansion","strong","up","positive","boost"];
+const negativeWords = ["loss","decline","decrease","cut","negative","down","risk","warning","weak"];
+
+function computeSentiment(text){
+  if(!text) return "neutral";
+  const t = text.toLowerCase();
+  let score=0;
+  positiveWords.forEach(w => { if(t.includes(w)) score++; });
+  negativeWords.forEach(w => { if(t.includes(w)) score--; });
+  return score>0 ? "positive" : score<0 ? "negative" : "neutral";
+}
+
+function timeAgo(dateStr){
+  if(!dateStr) return {text:"N/A", className:"date-old"};
+  const date = new Date(dateStr);
+  const seconds = Math.floor((Date.now()-date.getTime())/1000);
+  if(seconds < 60) return {text:"just now", className:"date-recent"};
+  if(seconds < 3600){ const m = Math.floor(seconds/60); return {text:`${m} minute${m>1?'s':''} ago`, className:"date-recent"}; }
+  if(seconds < 86400){ const h = Math.floor(seconds/3600); return {text:`${h} hour${h>1?'s':''} ago`, className:"date-recent"}; }
+  if(seconds < 86400*3){ const d = Math.floor(seconds/86400); return {text:`${d} day${d>1?'s':''} ago`, className:"date-medium"}; }
+  return {text: date.toLocaleDateString(), className:"date-old"};
+}
+
+function renderNewsTable(container, articles){
+  if(!articles || articles.length===0){ container.innerHTML = "<p class='loading'>No news found.</p>"; return; }
+  const sorted = articles.sort((a,b)=> new Date(b.pubDate || 0) - new Date(a.pubDate || 0));
+  let html = `<table><thead><tr><th>Source</th><th>Headline</th><th>Date</th><th>Sentiment</th></tr></thead><tbody>`;
+  for(const a of sorted){
+    const sentiment = computeSentiment((a.title||'') + ' ' + (a.description||''));
+    const cls = sentiment==="positive"?"pos":sentiment==="negative"?"neg":"neu";
+    const {text: dtText, className: dtCls} = timeAgo(a.pubDate);
+    html += `<tr>
+      <td>${a.source_id || a.source || "Unknown"}</td>
+      <td><a href="${a.link}" target="_blank" rel="noopener noreferrer">${a.title}</a></td>
+      <td class="${dtCls}">${dtText}</td>
+      <td><span class="sentiment ${cls}">${sentiment}</span></td>
+    </tr>`;
+  }
+  html += '</tbody></table>';
+  container.innerHTML = html;
+}
+
+// ---------- News fetchers ----------
+async function fetchLocalNews(city, county, country){
+  const div = document.getElementById('localNewsList');
+  div.innerHTML = "<p class='loading'>Loading local news…</p>";
+  const location = city || county || country || '';
+  if(!location){ div.innerHTML = "<p>No location data.</p>"; return; }
+  // optional mapping for country codes used by NewsData
+  const countryCodes = {"United Kingdom":"gb","United States":"us","Canada":"ca","Australia":"au","Germany":"de","France":"fr","India":"in"};
+  const code = country ? (countryCodes[country]||'') : '';
+  const url = `https://newsdata.io/api/1/news?apikey=${NEWSDATA_API_KEY}&q=${encodeURIComponent(location)}&language=en&category=business${code?`&country=${code}`:''}`;
+  try{
+    const res = await fetch(url);
+    const data = await res.json();
+    renderNewsTable(div, data.results || []);
+  }catch(e){
+    console.error("NewsData fetch error", e);
+    div.innerHTML = "<p>Error fetching local news.</p>";
+  }
+}
+
+async function fetchTenantNews(tenant){
+  const div = document.getElementById('tenantNewsList');
+  div.innerHTML = "<p class='loading'>Loading tenant news…</p>";
+  const url = `https://newsdata.io/api/1/news?apikey=${NEWSDATA_API_KEY}&q=${encodeURIComponent(tenant)}&language=en&category=business`;
+  try{
+    const res = await fetch(url);
+    const data = await res.json();
+    renderNewsTable(div, data.results || []);
+  }catch(e){
+    console.error("Tenant news fetch error", e);
+    div.innerHTML = "<p>Error fetching tenant news.</p>";
+  }
+}
+
+// ---------- Tenant search behavior ----------
+async function handleTenantSearch(tenant){
+  if(!tenant) return;
+  fetchTenantNews(tenant);
+  generateAISummary(`Provide a concise overview of tenant: ${tenant}. Include business model, sector, typical real-estate footprint. Max 120 words.`, document.getElementById('tenantAI'), document.getElementById('tenantProgress'));
+  // Demo: drop blue tenant marker near current map view with slight jitter to avoid stacking
+  const center = map.getCenter();
+  const jitterLat = center.lat + (Math.random()-0.5)*0.01;
+  const jitterLon = center.lng + (Math.random()-0.5)*0.01;
+  addMarker(jitterLat, jitterLon, `Tenant: ${tenant}`, "tenant");
+}
+
+// ---------- Final initialization ----------
+map.whenReady(()=> map.invalidateSize());
+</script>
 </body>
 </html>
