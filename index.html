@@ -12,7 +12,6 @@
 <script>
   // --- Replace these keys as needed (easy to find) ---
   const NEWSDATA_API_KEY = "pub_9524b7d26e424c3f891108537cca44c9"; // <-- your NewsData.io key
-  const OPENAI_API_KEY = "sk-your-openai-key-here";                 // <-- optional (not used by default)
 </script>
 
 <!-- Leaflet CSS -->
@@ -147,7 +146,7 @@
       <p style="margin:0; font-size:13px; color:#666;">Enter an address or tenant to begin</p>
     </div>
 	
-	<button id="aboutBtn" style="margin-left:12px; padding:6px 12px; border-radius:8px; border:1px solid #ddd; background:#fff; cursor:pointer;">About</button>
+	<button id="aboutBtn" style="margin-left:12px; padding:6px 12px; border-radius:8px; border:1px solid #ddd; background:#fff; cursor:pointer;">POC Info / Technologies Used / Enhancements</button>
 
   </div>
 
@@ -509,6 +508,14 @@ async function handleTenantSearch(tenant){
       <li>WebLLM (in-browser AI summaries)</li>
       <li>Vanilla JS, HTML, CSS</li>
     </ul>
+    <h2 style="margin-top:0;">Future Enhancements</h2>
+    <ol>
+      <li>The prompt could be tweaked to return more specific overviews relating to the tenant that the client is interested in.</li>
+      <li>Certain topics/keywords in the results could be flagged by the system as important.</li>
+	  <li>The address and tenant dropdowns could be prepopulated if this poc was incorporated into an existing system, so the market research could auto generate with 0 user interaction.</li>
+	  <li>The results could be exportable.</li>
+	  <li>Additional sections could be added/generated from additional external sources, so the system could immediately generate and compile property/tenant search results across multiple platforms.</li>
+    </ol>
     <button id="closeAbout" style="position:absolute; top:12px; right:12px; border:none; background:none; font-size:18px; cursor:pointer;">×</button>
   </div>
 </div>
